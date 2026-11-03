@@ -596,8 +596,164 @@
     draw();
   }
 
+  // ---- practice blocks (::: cards / order / match / sort / check): config html comes from the builder
+  function mix(a) { // shuffled copy that is never left in the original order
+    var b = a.slice();
+    for (var n = 0; n < 6; n++) {
+      for (var i = b.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)), t = b[i]; b[i] = b[j]; b[j] = t; }
+      if (b.some(function (x, k) { return x !== a[k]; })) break;
+    }
+    return b;
+  }
+  function head(box, c, label) {
+    box.insertAdjacentHTML("afterbegin", '<div class="phead"><span class="plabel">' + label + "</span>" +
+      (c.title ? '<span class="ptitle">' + c.title + "</span>" : "") + "</div>");
+  }
+  function result(box, ok, total, c) {
+    var r = box.querySelector(".wres");
+    r.hidden = false;
+    r.className = "wres " + (ok === total ? "ok" : "no");
+    r.innerHTML = "<p><b>" + (ok === total ? "✓ எல்லாம் சரி!" : ok + " / " + total + " சரி. சிவப்பில் உள்ளவற்றை மாற்றி மீண்டும் சரிபாருங்கள்.") +
+      "</b></p>" + (ok === total && c.e ? c.e : "");
+  }
+  var BAR = '<div class="wbar"><button type="button" class="btn on" data-go>சரிபார்</button>' +
+    '<button type="button" class="btn" data-show>விடையைக் காட்டு</button></div><div class="wres" hidden></div>';
+
+  function cards(box, c) {
+    head(box, c, "நினைவு அட்டைகள்");
+    var html = '<p class="note">அட்டையைத் தொட்டால் மறுபக்கம் தெரியும். முதலில் நீங்களே நினைவுபடுத்திப் பாருங்கள்.</p><div class="fcards">';
+    c.items.forEach(function (it, i) {
+      html += '<button type="button" class="fcard" data-i="' + i + '" aria-pressed="false"><span class="ff">' + it.f +
+        '</span><span class="fb">' + it.b + "</span></button>";
+    });
+    box.insertAdjacentHTML("beforeend", html + '</div><p class="note fcount">0 / ' + c.items.length + " திருப்பப்பட்டது</p>");
+    var seen = {};
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".fcard");
+      if (!b) return;
+      var on = b.getAttribute("aria-pressed") !== "true";
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+      seen[b.dataset.i] = 1;
+      box.querySelector(".fcount").textContent = Object.keys(seen).length + " / " + c.items.length + " திருப்பப்பட்டது";
+    });
+  }
+
+  function order(box, c) {
+    head(box, c, "வரிசைப்படுத்துங்கள்");
+    var cur = mix(c.items.map(function (_, i) { return i; }));
+    box.insertAdjacentHTML("beforeend", '<p class="note">▲ ▼ பொத்தான்களால் சரியான வரிசைக்கு மாற்றுங்கள்.</p><ol class="olist"></ol>' + BAR);
+    var ol = box.querySelector(".olist");
+    function draw(marks) {
+      ol.innerHTML = cur.map(function (k, pos) {
+        var m = marks ? (marks[pos] ? " ok" : " no") : "";
+        return '<li class="orow' + m + '"><span class="otext">' + c.items[k] + '</span><span class="obtn">' +
+          '<button type="button" class="btn" data-up="' + pos + '"' + (pos ? "" : " disabled") + ' aria-label="மேலே">▲</button>' +
+          '<button type="button" class="btn" data-down="' + pos + '"' + (pos < cur.length - 1 ? "" : " disabled") + ' aria-label="கீழே">▼</button></span></li>';
+      }).join("");
+    }
+    draw();
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      if (b.hasAttribute("data-up") || b.hasAttribute("data-down")) {
+        var p = +(b.dataset.up != null ? b.dataset.up : b.dataset.down), q = b.dataset.up != null ? p - 1 : p + 1, t = cur[p];
+        cur[p] = cur[q]; cur[q] = t; draw(); box.querySelector(".wres").hidden = true;
+      } else if (b.hasAttribute("data-go")) {
+        var marks = cur.map(function (k, pos) { return k === pos; });
+        draw(marks); result(box, marks.filter(Boolean).length, cur.length, c);
+      } else if (b.hasAttribute("data-show")) {
+        cur = c.items.map(function (_, i) { return i; }); draw(cur.map(function () { return true; }));
+        result(box, cur.length, cur.length, c);
+      }
+    });
+  }
+
+  function choose(box, c, rows, opts, label, note, drop) { // match (drop-down) + sort (buttons): one choice per row
+    head(box, c, label);
+    var html = '<p class="note">' + note + '</p><div class="mlist">';
+    rows.forEach(function (r, i) {
+      html += '<div class="mrow" data-i="' + i + '"><div class="mleft">' + r.text + '</div>' + (drop
+        ? '<select class="msel"><option value="">தெரிவு செய்யுங்கள்…</option>' + opts.map(function (o) {
+            return '<option value="' + o.v + '">' + o.h.replace(/<[^>]+>/g, "") + "</option>"; }).join("") + "</select>"
+        : '<div class="mopts">' + opts.map(function (o) { return '<button type="button" class="btn mopt" data-o="' + o.v + '">' + o.h + "</button>"; }).join("") + "</div>") +
+        "</div>";
+    });
+    box.insertAdjacentHTML("beforeend", html + "</div>" + BAR);
+    var pick = {};
+    function mark(show) {
+      var ok = 0;
+      box.querySelectorAll(".mrow").forEach(function (row) {
+        var i = row.dataset.i, want = String(rows[i].ans);
+        if (show) pick[i] = want;
+        row.querySelectorAll(".mopt").forEach(function (b) { b.classList.toggle("on", b.dataset.o === pick[i]); });
+        var sel = row.querySelector(".msel");
+        if (sel && show) sel.value = want;
+        var good = pick[i] === want;
+        row.classList.toggle("ok", good); row.classList.toggle("no", !good);
+        if (good) ok++;
+      });
+      result(box, ok, rows.length, c);
+    }
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest("button");
+      if (!b) return;
+      if (b.classList.contains("mopt")) {
+        var row = b.closest(".mrow");
+        pick[row.dataset.i] = b.dataset.o;
+        row.classList.remove("ok", "no");
+        row.querySelectorAll(".mopt").forEach(function (x) { x.classList.toggle("on", x === b); });
+        box.querySelector(".wres").hidden = true;
+      } else if (b.hasAttribute("data-go")) mark(false);
+      else if (b.hasAttribute("data-show")) mark(true);
+    });
+    box.addEventListener("change", function (e) {
+      if (!e.target.classList.contains("msel")) return;
+      var row = e.target.closest(".mrow");
+      pick[row.dataset.i] = e.target.value;
+      row.classList.remove("ok", "no");
+      box.querySelector(".wres").hidden = true;
+    });
+  }
+  function match(box, c) {
+    var order = mix(c.items.map(function (_, i) { return i; }));
+    choose(box, c, c.items.map(function (it, i) { return { text: it.l, ans: i }; }),
+      order.map(function (i) { return { v: i, h: c.items[i].r }; }), "பொருத்துங்கள்",
+      "ஒவ்வொன்றுக்கும் பொருத்தமான விடையைத் தெரிவு செய்யுங்கள்.", true);
+  }
+  function sort(box, c) {
+    var rows = mix(c.items.map(function (_, i) { return i; })).map(function (i) { return { text: c.items[i].x, ans: c.items[i].g }; });
+    choose(box, c, rows, c.groups.map(function (g, i) { return { v: i, h: g }; }), "வகைப்படுத்துங்கள்",
+      "ஒவ்வொன்றும் எந்தப் பிரிவுக்கு உரியது என்று தெரிவு செய்யுங்கள்.");
+  }
+
+  function check(box, c) {
+    head(box, c, "சிறு சோதனை");
+    var html = "";
+    c.qs.forEach(function (q, i) {
+      html += '<div class="pq" data-i="' + i + '"><div class="qt">' + q.q + '</div><div class="qopts">' +
+        q.o.map(function (o, j) { return '<button type="button" class="qo" data-o="' + j + '"><span class="ql">' + "ABCDEFGH"[j] + "</span><span>" + o + "</span></button>"; }).join("") +
+        '</div><div class="qe" hidden></div></div>';
+    });
+    box.insertAdjacentHTML("beforeend", html);
+    box.addEventListener("click", function (e) {
+      var b = e.target.closest(".qo");
+      if (!b) return;
+      var el = b.closest(".pq"), q = c.qs[el.dataset.i], o = +b.dataset.o, ok = o === q.a;
+      el.querySelectorAll(".qo").forEach(function (x) {
+        x.disabled = true;
+        if (+x.dataset.o === q.a) x.classList.add("right");
+      });
+      if (!ok) b.classList.add("wrong");
+      var ex = el.querySelector(".qe");
+      ex.hidden = false;
+      ex.innerHTML = "<p><b>" + (ok ? "✓ சரி!" : "✗ தவறு.") + "</b></p>" + (q.e || "");
+      el.classList.add(ok ? "ok" : "no");
+    });
+  }
+
   var KIT = { "journal-checker": journal, "t-account": tAccount, "trial-balance": trialBalance,
-    depreciation: depreciation, ratios: ratios, formula: formula, graph: graph };
+    depreciation: depreciation, ratios: ratios, formula: formula, graph: graph,
+    cards: cards, order: order, match: match, sort: sort, check: check };
   document.querySelectorAll(".widget[data-widget]").forEach(function (W) {
     var d = W.querySelector(".wdata"), fn = KIT[W.dataset.widget];
     if (!fn || !d) return;

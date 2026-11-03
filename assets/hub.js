@@ -3,22 +3,30 @@
 // Step 6 adds the widgets kit (elements with data-widget).
 (function () {
   "use strict";
-  // highlight the TOC chip of the section being read
+  // highlight, in the contents list, the section and topic being read (the last one whose top has passed)
   var toc = document.querySelector(".toc");
-  if (toc && "IntersectionObserver" in window) {
-    var links = {};
-    toc.querySelectorAll("a").forEach(function (a) { links[a.getAttribute("href").slice(1)] = a; });
-    var io = new IntersectionObserver(function (es) {
-      es.forEach(function (e) {
-        var a = links[e.target.id];
-        if (a && e.isIntersecting) {
-          toc.querySelectorAll("a").forEach(function (x) { x.removeAttribute("aria-current"); });
-          a.setAttribute("aria-current", "true");
-          a.scrollIntoView({ block: "nearest", inline: "nearest" });
-        }
+  if (toc) {
+    var marks = [].slice.call(toc.querySelectorAll("a")).map(function (a) {
+      return { a: a, el: document.getElementById(a.getAttribute("href").slice(1)) };
+    }).filter(function (m) { return m.el; });
+    var cur = null, queued = false;
+    var spy = function () {
+      queued = false;
+      var line = window.innerHeight * 0.3, sec = null, sub = null;
+      marks.forEach(function (m) {
+        if (m.el.getBoundingClientRect().top > line) return;
+        if (m.el.classList.contains("sec")) { sec = m; sub = null; } else sub = m;
       });
-    }, { rootMargin: "-40% 0px -55% 0px" });
-    document.querySelectorAll(".sec").forEach(function (s) { io.observe(s); });
+      var now = (sub || sec || {}).a;
+      if (now === cur) return;
+      marks.forEach(function (m) { m.a.removeAttribute("aria-current"); });
+      if (sec) sec.a.setAttribute("aria-current", "true");
+      if (sub) sub.a.setAttribute("aria-current", "true");
+      cur = now;
+      if (now && toc.scrollHeight > toc.clientHeight) now.scrollIntoView({ block: "nearest" });
+    };
+    window.addEventListener("scroll", function () { if (!queued) { queued = true; requestAnimationFrame(spy); } }, { passive: true });
+    spy();
   }
 
   // ---- helpers
@@ -46,9 +54,11 @@
   // ---- saved state (localStorage "bbm-hub"):
   // done:  {"<subject>/<chapter stem>": "YYYY-MM-DD"}      chapters marked done
   // quiz:  {"<subject>/<stem>": {best, last, tries, ts, n, hist: [%...], weak: [topic...]}}   weak = from the last attempt
-  // time:  {"<subject>/<stem>": minutes}                   study timer per chapter
+  // units: {"<subject>/<stem>": {"<unit id>": "YYYY-MM-DD"}}  lesson parts marked "understood"
+  //        (all parts understood → the chapter is marked done automatically)
+  // time:  {"<subject>/<stem>": minutes}                   automatic study time per chapter (decimals allowed)
   // days:  {"YYYY-MM-DD": minutes}                         days with any study activity (streak)
-  // timer: {key, start} while a study timer runs;  backup: "YYYY-MM-DD" of the last backup download
+  // timer: legacy manual timer {key, start}; logged and cleared on load;  backup: "YYYY-MM-DD" of the last backup
   var BBM = window.BBM = window.BBM || {};
   var KEY = "bbm-hub";
   function obj(x) { return x && typeof x === "object" && !Array.isArray(x) ? x : {}; }
@@ -63,7 +73,13 @@
         weak: Array.isArray(q.weak) ? q.weak.map(String) : [] };
     });
     Object.keys(obj(s.done)).forEach(function (k) { if (/^\d{4}-\d\d-\d\d$/.test(s.done[k])) done[k] = s.done[k]; });
-    return { v: 1, done: done, quiz: quiz, time: numMap(s.time), days: numMap(s.days),
+    var units = {};
+    Object.keys(obj(s.units)).forEach(function (k) {
+      var u = obj(s.units[k]), o = {};
+      Object.keys(u).forEach(function (id) { if (/^\d{4}-\d\d-\d\d$/.test(u[id])) o[id] = u[id]; });
+      if (Object.keys(o).length) units[k] = o;
+    });
+    return { v: 1, done: done, units: units, quiz: quiz, time: numMap(s.time), days: numMap(s.days),
       timer: t.key && +t.start ? { key: String(t.key), start: +t.start } : null,
       backup: typeof s.backup === "string" ? s.backup : null };
   }
@@ -107,49 +123,82 @@
   var B = document.body.dataset;
   var chapterKey = B.subject && B.chapter ? B.subject + "/" + B.chapter : null;
 
-  // ---- chapter page: "mark as done" + study timer
+  // ---- chapter page: "understood" button on every lesson part + automatic study time
+  // Time counts only on a written chapter page, only while it is visible and focused (not another tab or app),
+  // and only while the student is active: no mouse, key, scroll or touch for IDLE ms pauses it.
   var tools = document.getElementById("ch-tools");
   if (tools && chapterKey) {
-    var tick = null;
-    var drawTools = function () {
-      var s = BBM.load(), d = s.done[chapterKey], run = s.timer && s.timer.key === chapterKey, mins = s.time[chapterKey] || 0;
-      tools.innerHTML =
-        '<button type="button" class="btn' + (d ? " on" : "") + '" data-act="done">' +
-        (d ? "✓ முடிந்தது (Done) · " + dm(d) : "☐ இந்தப் பாடத்தை முடித்தேன் (Mark as done)") + "</button>" +
-        '<div class="timer"><button type="button" class="btn' + (run ? " run" : "") + '" data-act="timer">' +
-        (run ? "⏸ நிறுத்து (Stop)" : "▶ படிப்பு நேரம் (Study timer)") + '</button><span class="tm"></span></div>' +
-        '<small class="tsum">இந்தப் பாடத்தில் படித்த நேரம்: ' + mins + " நிமி" +
-        (s.quiz[chapterKey] ? " · வினாடி வினா சிறந்தது: " + s.quiz[chapterKey].best + "%" : "") + "</small>";
-      tools.hidden = false;
-      clearInterval(tick);
-      var tm = tools.querySelector(".tm");
-      if (run) {
-        var show = function () {
-          var sec = Math.max(0, Math.floor((Date.now() - s.timer.start) / 1000));
-          tm.textContent = (sec >= 3600 ? Math.floor(sec / 3600) + ":" : "") + pad(Math.floor(sec / 60) % 60) + ":" + pad(sec % 60);
-        };
-        show(); tick = setInterval(show, 1000);
-      } else if (s.timer) {
-        tm.textContent = "(வேறொரு பாடத்தில் timer ஓடுகிறது)";
-      }
-    };
-    tools.addEventListener("click", function (e) {
-      var b = e.target.closest("[data-act]");
-      if (!b) return;
-      if (b.dataset.act === "done") {
-        if (BBM.load().done[chapterKey] && !confirm("'முடிந்தது' என்ற குறியை நீக்கவா?")) return;
-        BBM.update(function (s) {
-          if (s.done[chapterKey]) delete s.done[chapterKey];
-          else { s.done[chapterKey] = iso(now()); studied(s, 0); }
-        });
-      } else {
-        BBM.update(function (s) { // one timer at a time: starting here stops (and logs) any other
-          var mine = s.timer && s.timer.key === chapterKey;
-          stopTimer(s);
-          if (!mine) s.timer = { key: chapterKey, start: Date.now() };
-        });
-      }
+    var IDLE = 2 * 60 * 1000, units = [].slice.call(document.querySelectorAll(".unit[data-unit]"));
+    var lastAct = Date.now(), pending = 0, reason = "";
+    BBM.update(function (s) { stopTimer(s); }); // log a timer left running by the old manual button
+
+    units.forEach(function (u) {
+      u.insertAdjacentHTML("beforeend", '<div class="ufoot"><button type="button" class="btn ubtn" data-unit="' + u.dataset.unit + '"></button></div>');
     });
+    var toc = {};
+    document.querySelectorAll(".toc a").forEach(function (a) { toc[a.getAttribute("href").slice(1)] = a; });
+
+    var fmtMin = function (m) { m = Math.floor(m); return m >= 60 ? Math.floor(m / 60) + " மணி " + (m % 60) + " நிமி" : m + " நிமி"; };
+    var drawTools = function () {
+      var s = BBM.load(), got = s.units[chapterKey] || {}, n = units.filter(function (u) { return got[u.dataset.unit]; }).length;
+      units.forEach(function (u) {
+        var id = u.dataset.unit, on = !!got[id], b = u.querySelector(".ubtn");
+        b.classList.toggle("on", on);
+        b.textContent = on ? "✓ விளங்கியது" : "இந்தப் பகுதி விளங்கியது";
+        u.classList.toggle("got", on);
+        if (toc[id]) toc[id].classList.toggle("got", on);
+      });
+      var mins = (s.time[chapterKey] || 0) + pending / 60, d = s.done[chapterKey];
+      tools.innerHTML =
+        '<div class="uprog"><b>' + n + " / " + units.length + "</b> பகுதிகள் விளங்கின" +
+        (d ? ' · <span class="good">இந்தப் பாடம் முடிந்தது (' + dm(d) + ")</span>" : "") +
+        '<span class="bar"><i style="width:' + (units.length ? Math.round(100 * n / units.length) : 0) + '%"></i></span></div>' +
+        '<div class="tsum">படிப்பு நேரம்: <b class="tm">' + fmtMin(mins) + '</b> <span class="tstate' + (reason ? " off" : "") + '">' +
+        (reason || "● கணக்கிடப்படுகிறது") + "</span>" +
+        (s.quiz[chapterKey] ? " · வினாடி வினா சிறந்தது: " + s.quiz[chapterKey].best + "%" : "") + "</div>";
+      tools.hidden = false;
+    };
+    document.addEventListener("click", function (e) {
+      var b = e.target.closest(".ubtn");
+      if (!b) return;
+      var id = b.dataset.unit;
+      BBM.update(function (s) {
+        var u = s.units[chapterKey] = s.units[chapterKey] || {};
+        if (u[id]) delete u[id]; else { u[id] = iso(now()); studied(s, 0); }
+        var all = units.every(function (x) { return u[x.dataset.unit]; });
+        if (all && units.length && !s.done[chapterKey]) s.done[chapterKey] = iso(now());
+        if (!all && s.done[chapterKey] && units.length) delete s.done[chapterKey];
+      });
+      if (!b.classList.contains("on")) return;
+      var next = units[units.indexOf(b.closest(".unit")) + 1]; // move on to the next part
+      if (next) next.scrollIntoView({ block: "start" });
+    });
+
+    var flush = function () { // saves counted seconds (every 10 s and when leaving / pausing)
+      if (pending < 1) return;
+      var m = pending / 60; pending = 0;
+      BBM.update(function (s) { s.time[chapterKey] = (s.time[chapterKey] || 0) + m; studied(s, m); });
+    };
+    var state = function () {
+      if (document.visibilityState !== "visible") return "இடைநிறுத்தம்: பக்கம் மறைந்துள்ளது";
+      if (!document.hasFocus()) return "இடைநிறுத்தம்: வேறு சாளரம் / app திறந்துள்ளது";
+      if (Date.now() - lastAct > IDLE) return "இடைநிறுத்தம்: 2 நிமிடமாக அசைவு இல்லை";
+      return "";
+    };
+    var ticks = 0;
+    setInterval(function () {
+      var r = state();
+      if (!r) pending += 1;
+      if (r !== reason) { reason = r; if (r) flush(); drawTools(); }
+      if (++ticks % 10 === 0) flush();
+      else if (!r && ticks % 60 === 0) drawTools();
+    }, 1000);
+    ["mousemove", "mousedown", "keydown", "scroll", "wheel", "touchstart"].forEach(function (ev) {
+      window.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true });
+    });
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", function () { if (document.visibilityState !== "visible") flush(); });
+    window.addEventListener("blur", flush);
     window.addEventListener("bbm-change", drawTools);
     window.addEventListener("storage", function (e) { if (e.key === KEY) drawTools(); });
     drawTools();
@@ -289,7 +338,7 @@
       if (!ready) return;
       var kn = knowledge(qkeys, s);
       know.innerHTML = "<div><small>முடித்த பாடங்கள்</small><b>" + done + " / " + ready + "</b></div>" +
-        (kn == null ? "" : "<div><small>அறிவு (Knowledge)</small><b>" + kn + '%</b></div><span class="bar"><i style="width:' + kn + '%"></i></span>');
+        (kn == null ? "" : "<div><small>வினாடி வினா சராசரி</small><b>" + kn + '%</b></div><span class="bar"><i style="width:' + kn + '%"></i></span>');
       know.hidden = false;
     };
     window.addEventListener("storage", function (e) { if (e.key === KEY) drawSubject(); });
@@ -300,7 +349,7 @@
   var dataEl = document.getElementById("hub-data");
   if (!dataEl) return;
   var D = JSON.parse(dataEl.textContent);
-  var KIND = { mid: "இடைப் பருவம் (Mid)", end: "இறுதிப் பருவம் (End)" };
+  var KIND = { mid: "இடைப் பருவம்", end: "இறுதிப் பருவம்" };
   var STATUS = { todo: "பக்கம் தயாராகிறது", coming: "குறிப்புகள் விரைவில்" };
 
   // next exam: the mid-semester until its day is over, then the end-semester
@@ -359,7 +408,7 @@
           bar.firstChild.style.width = (pool.length ? Math.round(100 * n / pool.length) : 0) + "%";
           meta.textContent = pool.length
             ? "முடித்தவை " + n + " / " + pool.length + " · " + target(rem.length, ne.days) + (kn == null ? "" : " · அறிவு " + kn + "%")
-            : "குறிப்புகள் விரைவில் (Notes coming)";
+            : "குறிப்புகள் விரைவில்";
         }
       }
       if (ne) rows.push({ s: s, ne: ne, rem: rem });
@@ -370,7 +419,7 @@
     var hero = document.getElementById("next-exam");
     if (rows.length) {
       var h = rows[0];
-      hero.innerHTML = "<div><small>அடுத்த பரீட்சை (Next exam)</small><b>" + esc(h.s.name_ta) + "</b><small>" +
+      hero.innerHTML = "<div><small>அடுத்த பரீட்சை</small><b>" + esc(h.s.name_ta) + "</b><small>" +
         KIND[h.ne.kind] + " · " + fmt(h.ne.day) + (h.ne.time ? ", " + esc(h.ne.time) : "") + '</small></div><div class="big">' +
         (h.ne.days > 1 ? h.ne.days + "<small>நாட்கள்</small>" : countdown(h.ne, t)) + "</div>";
     } else {
@@ -386,13 +435,13 @@
       r.rem.forEach(function (c) { if (plan.length < slots) plan.push({ s: r.s, c: c }); });
     });
     var mins = plan.reduce(function (a, p) { return a + (+p.c.minutes || 0); }, 0);
-    var html = "<h2>இன்றைய திட்டம் (Today's plan)</h2><p class=\"goal\">" + fmt(t);
+    var html = "<h2>இன்றைய திட்டம்</h2><p class=\"goal\">" + fmt(t);
     if (plan.length) {
-      html += " · இன்றைய இலக்கு (Daily target): " + plan.length + " பாடம்" + (mins ? " · ⏱ சுமார் " + mins + " நிமி" : "") + "</p><ol>";
+      html += " · இன்றைய இலக்கு: " + plan.length + " பாடம்" + (mins ? " · சுமார் " + mins + " நிமி" : "") + "</p><ol>";
       plan.forEach(function (p) {
         var c = p.c, chips = "";
-        if (c.priority) chips += '<span class="pri pri-' + c.priority.toLowerCase() + '">' + esc(c.priority) + "</span>";
-        if (c.minutes) chips += '<span class="chip">⏱ ' + esc(c.minutes) + " நிமி</span>";
+        if (c.priority) chips += '<span class="pri pri-' + c.priority.toLowerCase() + '">' + esc({ Must: "அவசியம்", Should: "முக்கியம்", Extra: "மேலதிகம்" }[c.priority] || c.priority) + "</span>";
+        if (c.minutes) chips += '<span class="chip">' + esc(c.minutes) + " நிமிடம்</span>";
         if (c.status !== "ready") chips += '<span class="chip st-' + c.status + '">' + STATUS[c.status] + "</span>";
         html += '<li><a href="' + p.s.slug + "/" + c.stem + '.html"><small>' + esc(p.s.name_ta) +
           (c.lesson ? " · பாடம் " + esc(c.lesson) : "") + "</small><b>" + esc(c.title) + "</b>" +
@@ -420,12 +469,12 @@
     });
     weak.sort(function (a, b) { return a.q.last - b.q.last; });
     var kn = knowledge(qkeys, s), stale = !s.backup || (now() - at(s.backup)) / 864e5 >= 7;
-    var html = '<h2>என் முன்னேற்றம் (My progress)</h2><div class="stats">' +
-      "<div><b>🔥 " + BBM.streak(s) + "</b><small>நாள் தொடர் (Streak)</small></div>" +
-      "<div><b>" + (s.days[today] || 0) + "</b><small>இன்று படித்த நிமிடங்கள்</small></div>" +
+    var html = '<h2>என் முன்னேற்றம்</h2><div class="stats">' +
+      "<div><b>" + BBM.streak(s) + "</b><small>தொடர்ந்து படித்த நாட்கள்</small></div>" +
+      "<div><b>" + Math.floor(s.days[today] || 0) + "</b><small>இன்று படித்த நிமிடங்கள்</small></div>" +
       "<div><b>" + (ready ? done + " / " + ready : "—") + "</b><small>முடித்த பாடங்கள் (தயாரானவை)</small></div>" +
-      "<div><b>" + (kn == null ? "—" : kn + "%") + "</b><small>அறிவு (Knowledge)</small></div></div>" +
-      "<h3>மீண்டும் பார்க்க வேண்டியவை (Weak topics)</h3>";
+      "<div><b>" + (kn == null ? "—" : kn + "%") + "</b><small>வினாடி வினா சராசரி</small></div></div>" +
+      "<h3>மீண்டும் பார்க்க வேண்டியவை</h3>";
     if (weak.length) {
       html += '<ul class="weak">' + weak.slice(0, 8).map(function (w) {
         return '<li><a href="' + w.sub.slug + "/" + w.c.stem + '.html#quiz"><b>' + w.q.weak.map(esc).join(", ") + "</b><small>" +
@@ -434,8 +483,8 @@
     } else {
       html += '<p class="note">இன்னும் இல்லை. ஒவ்வொரு பாடத்தின் வினாடி வினாவையும் செய்யுங்கள்; தவறிய தலைப்புகள் இங்கே தோன்றும்.</p>';
     }
-    html += '<div class="backup"><button type="button" class="btn" data-act="backup">💾 காப்புப் பிரதி எடு (Backup)</button>' +
-      '<label class="btn">📂 மீட்டெடு (Restore)<input type="file" accept=".json,application/json" hidden></label></div>' +
+    html += '<div class="backup"><button type="button" class="btn" data-act="backup">காப்புப் பிரதி எடு</button>' +
+      '<label class="btn">காப்புப் பிரதியிலிருந்து மீட்டெடு<input type="file" accept=".json,application/json" hidden></label></div>' +
       '<p class="note' + (stale ? " warn" : "") + '">உங்கள் முன்னேற்றம் இந்த உலாவியில் (browser) மட்டுமே சேமிக்கப்படுகிறது. ' +
       "வாரம் ஒருமுறை காப்புப் பிரதி எடுத்து, கோப்பைப் பாதுகாப்பாக வைத்திருங்கள். புதிய phone / browser இல் ‘மீட்டெடு’ மூலம் தொடரலாம். " +
       (s.backup ? "கடைசிக் காப்புப் பிரதி: " + dm(s.backup) + "-" + s.backup.slice(0, 4) : "இதுவரை காப்புப் பிரதி எடுக்கவில்லை.") + "</p>";
@@ -458,6 +507,10 @@
       var x = a.quiz[k], y = b.quiz[k], m = Object.assign({}, !x || y.ts > x.ts ? y : x);
       if (x) { m.best = Math.max(x.best, y.best); m.tries = Math.max(x.tries, y.tries); }
       a.quiz[k] = m;
+    });
+    Object.keys(b.units).forEach(function (k) {
+      a.units[k] = a.units[k] || {};
+      Object.keys(b.units[k]).forEach(function (id) { if (!a.units[k][id] || b.units[k][id] < a.units[k][id]) a.units[k][id] = b.units[k][id]; });
     });
     ["time", "days"].forEach(function (f) {
       Object.keys(b[f]).forEach(function (k) { a[f][k] = Math.max(a[f][k] || 0, b[f][k]); });
