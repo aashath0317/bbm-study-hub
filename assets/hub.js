@@ -128,7 +128,7 @@
   // and only while the student is active: no mouse, key, scroll or touch for IDLE ms pauses it.
   var tools = document.getElementById("ch-tools");
   if (tools && chapterKey) {
-    var IDLE = 2 * 60 * 1000, units = [].slice.call(document.querySelectorAll(".unit[data-unit]"));
+    var IDLE = 5 * 60 * 1000, units = [].slice.call(document.querySelectorAll(".unit[data-unit]"));
     var lastAct = Date.now(), pending = 0, reason = "";
     BBM.update(function (s) { stopTimer(s); }); // log a timer left running by the old manual button
 
@@ -182,7 +182,7 @@
     var state = function () {
       if (document.visibilityState !== "visible") return "இடைநிறுத்தம்: பக்கம் மறைந்துள்ளது";
       if (!document.hasFocus()) return "இடைநிறுத்தம்: வேறு சாளரம் திறந்துள்ளது";
-      if (Date.now() - lastAct > IDLE) return "இடைநிறுத்தம்: 2 நிமிடமாக அசைவு இல்லை";
+      if (Date.now() - lastAct > IDLE) return "இடைநிறுத்தம்: 5 நிமிடமாக அசைவு இல்லை";
       return "";
     };
     var ticks = 0;
