@@ -181,7 +181,7 @@
     };
     var state = function () {
       if (document.visibilityState !== "visible") return "இடைநிறுத்தம்: பக்கம் மறைந்துள்ளது";
-      if (!document.hasFocus()) return "இடைநிறுத்தம்: வேறு சாளரம் / app திறந்துள்ளது";
+      if (!document.hasFocus()) return "இடைநிறுத்தம்: வேறு சாளரம் திறந்துள்ளது";
       if (Date.now() - lastAct > IDLE) return "இடைநிறுத்தம்: 2 நிமிடமாக அசைவு இல்லை";
       return "";
     };
