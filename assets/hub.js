@@ -23,7 +23,7 @@
       if (sec) sec.a.setAttribute("aria-current", "true");
       if (sub) sub.a.setAttribute("aria-current", "true");
       cur = now;
-      if (now && toc.scrollHeight > toc.clientHeight) now.scrollIntoView({ block: "nearest" });
+      if (now) now.scrollIntoView({ block: "nearest" }); // keeps it visible in the side panel (hidden on phones)
     };
     window.addEventListener("scroll", function () { if (!queued) { queued = true; requestAnimationFrame(spy); } }, { passive: true });
     spy();
@@ -196,6 +196,15 @@
     ["mousemove", "mousedown", "keydown", "scroll", "wheel", "touchstart"].forEach(function (ev) {
       window.addEventListener(ev, function () { lastAct = Date.now(); }, { passive: true });
     });
+    // laptop: progress and study time sit in the side panel, so they take no reading space
+    var side = document.querySelector(".side"), head = tools.parentNode, after = tools.nextSibling;
+    var place = function () {
+      if (!side) return;
+      if (window.matchMedia("(min-width: 1000px)").matches) side.insertBefore(tools, side.firstChild);
+      else head.insertBefore(tools, after);
+    };
+    window.addEventListener("resize", place);
+    place();
     window.addEventListener("pagehide", flush);
     document.addEventListener("visibilitychange", function () { if (document.visibilityState !== "visible") flush(); });
     window.addEventListener("blur", flush);
@@ -206,8 +215,10 @@
 
   // ---- quizzes: answer → instant ✓/✗ + Tamil explanation; the score is saved once every question is answered
   var LET = "ABCDEFGH";
-  function parseNum(v) { // "Rs. 15,000" → 15000; "15000abc", "1.2.3", "" → NaN (whole input must be a number)
-    var s = String(v).trim().replace(/^rs\.?\s*/i, "").replace(/[,\s]/g, "");
+  function parseNum(v) { // "Rs. 15,000" → 15000; "9/4" → 2.25; "15000abc", "1.2.3", "" → NaN (whole input must be a number)
+    var s = String(v).trim().replace(/^rs\.?\s*/i, "").replace(/[,\s]/g, "").replace(/\u2212/g, "-");
+    var f = /^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(s); // a fraction such as 9/4
+    if (f) return +f[2] ? f[1] / f[2] : NaN;
     return /^-?(\d+\.?\d*|\.\d+)$/.test(s) ? Number(s) : NaN;
   }
   function shuffle(a) {

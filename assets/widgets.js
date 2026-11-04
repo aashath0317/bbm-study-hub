@@ -138,12 +138,12 @@
     var bar = document.createElement("div");
     bar.className = "wbar";
     bar.innerHTML = '<button type="button" class="btn on" data-next></button>' +
-      '<button type="button" class="btn" data-all>எல்லாம் காட்டு (Show all)</button><span class="note"></span>';
+      '<button type="button" class="btn" data-all>எல்லாப் படிகளையும் காட்டு</button><span class="note"></span>';
     box.appendChild(bar);
     var next = bar.querySelector("[data-next]");
     function draw() {
       lis.forEach(function (li, i) { li.classList.toggle("wait", i >= shown); });
-      next.textContent = shown < n ? "அடுத்த படி ▸ (Next step)" : "↺ முதலிலிருந்து (Start again)";
+      next.textContent = shown < n ? "அடுத்த படி ▸" : "↺ முதலிலிருந்து";
       bar.querySelector(".note").textContent = "படி " + shown + " / " + n;
       bar.querySelector("[data-all]").hidden = shown >= n;
     }
@@ -726,16 +726,39 @@
       "ஒவ்வொன்றும் எந்தப் பிரிவுக்கு உரியது என்று தெரிவு செய்யுங்கள்.");
   }
 
+  function answer(v) { // same rules as the chapter quiz: whole input must be a number, fractions allowed
+    var s = String(v).trim().replace(/^rs\.?\s*/i, "").replace(/[,\s]/g, "").replace(/\u2212/g, "-");
+    var f = /^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(s); // a fraction such as 9/4
+    if (f) return +f[2] ? f[1] / f[2] : NaN;
+    return /^-?(\d+\.?\d*|\.\d+)$/.test(s) ? Number(s) : NaN;
+  }
   function check(box, c) {
     head(box, c, "சிறு சோதனை");
     var html = "";
     c.qs.forEach(function (q, i) {
-      html += '<div class="pq" data-i="' + i + '"><div class="qt">' + q.q + '</div><div class="qopts">' +
-        q.o.map(function (o, j) { return '<button type="button" class="qo" data-o="' + j + '"><span class="ql">' + "ABCDEFGH"[j] + "</span><span>" + o + "</span></button>"; }).join("") +
-        '</div><div class="qe" hidden></div></div>';
+      html += '<div class="pq" data-i="' + i + '"><div class="qt">' + q.q + "</div>" + (q.o
+        ? '<div class="qopts">' + q.o.map(function (o, j) { return '<button type="button" class="qo" data-o="' + j + '"><span class="ql">' + "ABCDEFGH"[j] + "</span><span>" + o + "</span></button>"; }).join("") + "</div>"
+        : '<div class="qn"><input type="text" inputmode="text" autocomplete="off" placeholder="விடை (உதா: 15 அல்லது 9/4)"><button type="button" class="btn on" data-num>சரிபார்</button></div>') +
+        '<div class="qe" hidden></div></div>';
     });
     box.insertAdjacentHTML("beforeend", html);
+    function checkNum(el) { // stays open until right, so the student can try again; "விடை" comes from the explanation
+      var q = c.qs[el.dataset.i], inp = el.querySelector("input"), x = answer(inp.value), ex = el.querySelector(".qe");
+      ex.hidden = false;
+      if (isNaN(x)) { ex.innerHTML = "<p>ஒரு எண்ணை எழுதுங்கள் (உதா: 15, 2.5 அல்லது 9/4).</p>"; return; }
+      var ok = Math.abs(x - q.n) <= (q.t || 0) + 1e-9;
+      inp.classList.toggle("right", ok); inp.classList.toggle("wrong", !ok);
+      el.classList.toggle("ok", ok);
+      if (ok) inp.disabled = el.querySelector("[data-num]").disabled = true;
+      ex.innerHTML = ok ? "<p><b>✓ சரி!</b></p>" + (q.e || "")
+        : '<p><b>✗ இன்னும் சரியில்லை.</b> மீண்டும் முயலுங்கள், அல்லது <button type="button" class="btn" data-why>விளக்கத்தைக் காட்டு</button></p>';
+    }
+    box.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" && e.target.matches(".qn input")) checkNum(e.target.closest(".pq"));
+    });
     box.addEventListener("click", function (e) {
+      if (e.target.closest("[data-num]")) return checkNum(e.target.closest(".pq"));
+      if (e.target.closest("[data-why]")) { var pq = e.target.closest(".pq"); pq.querySelector(".qe").innerHTML = c.qs[pq.dataset.i].e || ""; return; }
       var b = e.target.closest(".qo");
       if (!b) return;
       var el = b.closest(".pq"), q = c.qs[el.dataset.i], o = +b.dataset.o, ok = o === q.a;
