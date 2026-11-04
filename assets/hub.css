@@ -390,3 +390,6 @@ msup > :last-child, munder > :last-child { font-size: 85%; } /* smaller than the
 
 /* Nested fractions: browsers shrink each level; stop after the first so the innermost x stays readable. */
 mfrac mfrac > * { math-style: normal; }
+/* Inside a sentence or table the first level already shrank, so a fraction inside a fraction keeps that size. */
+math:not([display="block"]) mfrac mfrac > * { math-depth: add(0); }
+td math { font-size: 1.25em; } /* table text is smaller, and stacked fractions must stay readable */
