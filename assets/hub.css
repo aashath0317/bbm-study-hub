@@ -386,3 +386,4 @@ msup > :last-child, munder > :last-child { font-size: 85%; } /* smaller than the
   body.home main { max-width: 1640px; }
   body.subject main { max-width: 1400px; }
 }
+@media (min-width: 1000px) { #dash:not([hidden]) { grid-template-rows: auto 1fr; } }
