@@ -497,7 +497,7 @@
     html += '<div class="backup"><button type="button" class="btn" data-act="backup">காப்புப் பிரதி எடு</button>' +
       '<label class="btn">காப்புப் பிரதியிலிருந்து மீட்டெடு<input type="file" accept=".json,application/json" hidden></label></div>' +
       '<p class="note' + (stale ? " warn" : "") + '">உங்கள் முன்னேற்றம் இந்த உலாவியில் (browser) மட்டுமே சேமிக்கப்படுகிறது. ' +
-      "வாரம் ஒருமுறை காப்புப் பிரதி எடுத்து, கோப்பைப் பாதுகாப்பாக வைத்திருங்கள். புதிய phone / browser இல் ‘மீட்டெடு’ மூலம் தொடரலாம். " +
+      "வாரம் ஒருமுறை காப்புப் பிரதி எடுத்து, கோப்பைப் பாதுகாப்பாக வைத்திருங்கள். புதிய கணினியில் அல்லது உலாவியில் ‘மீட்டெடு’ மூலம் தொடரலாம். " +
       (s.backup ? "கடைசிக் காப்புப் பிரதி: " + dm(s.backup) + "-" + s.backup.slice(0, 4) : "இதுவரை காப்புப் பிரதி எடுக்கவில்லை.") + "</p>";
     prog.innerHTML = html;
   }
@@ -526,6 +526,8 @@
     ["time", "days"].forEach(function (f) {
       Object.keys(b[f]).forEach(function (k) { a[f][k] = Math.max(a[f][k] || 0, b[f][k]); });
     });
+    // keep the newer "last backup" date, so restoring a backup never says none was taken
+    if (/^\d{4}-\d\d-\d\d$/.test(b.backup) && (!a.backup || b.backup > a.backup)) a.backup = b.backup;
   }
   BBM.merge = merge;
   function restore(file) {
