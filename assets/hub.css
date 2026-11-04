@@ -446,3 +446,52 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .qn .btn { justify-content: center; min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+
+
+/* Reader-controlled appearance. Header stays compact at every reading size. */
+:root { --text-scale: 1; }
+html { font-size: calc(16px * var(--text-scale)); }
+body { font-size: calc(18px * var(--text-scale)); }
+.top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 54px; }
+.top .brand { font-size: 14px; line-height: 1.6; }
+.reader-controls { display: flex; align-items: center; gap: 10px; flex: none; }
+.reader-controls[hidden] { display: none; }
+.reader-button { display: inline-flex; align-items: center; justify-content: center; min-width: 40px; min-height: 40px; padding: 8px 10px; font: 15px/1.4 system-ui, sans-serif; background: var(--surface); color: var(--text); border: 1px solid var(--line); border-radius: 9px; cursor: pointer; }
+.reader-button:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-soft); }
+.reader-button:disabled { opacity: .4; cursor: default; }
+.reader-status { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+/* Long equations scroll within their own block, including at the largest text size. */
+.lesson .ct, .lesson .qt, .lesson .wq { overflow-wrap: anywhere; }
+.lesson math { max-width: 100%; }
+.tools { top: 58px; }
+@media (min-width: 1000px) { .side { top: 62px; max-height: calc(100vh - 70px); } }
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141a22; --surface: #1c2430; --surface-2: #252f3c; --text: #e9edf3; --muted: #b8c3d0;
+  --line: #415064; --accent: #9ccfff; --accent-soft: #223c56; --link: #9ccfff; --hl: #63521b;
+  --must: #ffaaa4; --must-bg: #4a292d; --should: #f3ce81; --should-bg: #443920;
+  --ok: #91dcb4; --ok-bg: #203f33; --tip: #9ccfff; --exam: #ffaaa4; --warn: #f3ce81;
+  --key: #9ccfff; --trick: #d0b6ff; --example: #b8c3d0; --answer: #e9edf3;
+}
+html[data-theme="dark"] .fcard, html[data-theme="dark"] .orow, html[data-theme="dark"] .mrow,
+html[data-theme="dark"] .msel { background: var(--surface); }
+html[data-theme="dark"] tbody tr:nth-child(even) td { background: var(--surface-2); }
+html[data-theme="dark"] .widget.practice { background: #1a2c3e; border-color: var(--line); }
+html[data-theme="dark"] .steps.reveal { border-color: var(--line); border-top-color: var(--accent); }
+html[data-theme="dark"] .btn.on, html[data-theme="dark"] .ubtn.on { color: #141a22; }
+html[data-theme="dark"] .fcard[aria-pressed="true"] { background: var(--accent-soft); }
+@media (min-width: 1500px) {
+  html { font-size: calc(18px * var(--text-scale)); }
+  body { font-size: calc(20px * var(--text-scale)); }
+}
+@media (max-width: 420px) {
+  .top { padding-inline: 12px; gap: 6px; }
+  .top .brand { font-size: 12px; }
+  .reader-controls { gap: 6px; }
+  .reader-button { min-width: 36px; padding-inline: 7px; }
+}
+@media print {
+  html[data-theme] { --bg: white; --surface: white; --surface-2: #f5f5f2; --text: black; --muted: #444; --line: #ccc; --accent: #1e5a8a; --accent-soft: #eef4f9; }
+}
+/* Keep oversized inline fractions locally scrollable when text is enlarged. */
+.lesson p:has(math), .lesson .ct:has(math), .lesson .qt:has(math), .lesson .wq:has(math), .lesson .qo:has(math) { overflow-x: auto; }
