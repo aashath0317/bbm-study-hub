@@ -27,7 +27,7 @@ body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--
 main { max-width: 780px; margin: 0 auto; padding: 8px 20px 56px; }
 body.chapter main { max-width: 1500px; }
 a { color: var(--link); text-underline-offset: 3px; }
-h1 { font-size: 2rem; line-height: 1.35; font-weight: 700; margin: 18px 0 4px; }
+h1 { font-size: 2rem; line-height: 1.35; font-weight: 700; margin: 18px 0 4px; overflow-wrap: anywhere; }
 h2 { font-size: 1.45rem; line-height: 1.4; font-weight: 700; margin: 36px 0 12px; }
 h3 { font-size: 1.15rem; line-height: 1.5; font-weight: 700; margin: 30px 0 8px; }
 h4, h5 { font-size: 1rem; margin: 20px 0 6px; }
