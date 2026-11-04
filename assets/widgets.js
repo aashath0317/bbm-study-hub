@@ -21,8 +21,10 @@
     if (!isFinite(x)) return "—";
     return x.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
-  function num(v) { // "Rs. 12,500" → 12500; "", "12500abc" → NaN (whole input must be a number)
-    var s = String(v).trim().replace(/^rs\.?\s*/i, "").replace(/[,\s]/g, "");
+  function num(v) { // "Rs. 12,500" → 12500; "1/2" → 0.5; "", "12500abc" → NaN (whole input must be a number)
+    var s = String(v).trim().replace(/^rs\.?\s*/i, "").replace(/[,\s]/g, "").replace(/\u2212/g, "-");
+    var f = /^(-?\d+(?:\.\d+)?)\/(\d+(?:\.\d+)?)$/.exec(s);
+    if (f) return +f[2] ? f[1] / f[2] : NaN;
     return /^-?(\d+\.?\d*|\.\d+)$/.test(s) ? Number(s) : NaN;
   }
   function same(a, b) { return Math.abs(a - b) < 0.005; }
@@ -127,7 +129,8 @@
       prev = t;
     });
     // tidy: "+ (-2)" → "− 2", "2 × x" → "2x", "1x" → "x"
-    return out.replace(/ \+ \(-([\d.,]+)\)/g, " − $1").replace(/ − \(-([\d.,]+)\)/g, " + $1")
+    // (not before a power: 1 − (-3)⁴ is not 1 + 3⁴)
+    return out.replace(/ \+ \(-([\d.,]+)\)(?!<sup>)/g, " − $1").replace(/ − \(-([\d.,]+)\)(?!<sup>)/g, " + $1")
       .replace(/(\d) × ([A-Za-z])(?![A-Za-z(])/g, "$1$2").replace(/(^|[^\d.,])1([A-Za-z])(?![A-Za-z(])/g, "$1$2");
   }
 
