@@ -393,3 +393,56 @@ mfrac mfrac > * { math-style: normal; }
 /* Inside a sentence or table the first level already shrank, so a fraction inside a fraction keeps that size. */
 math:not([display="block"]) mfrac mfrac > * { math-depth: add(0); }
 td math { font-size: 1.25em; } /* table text is smaller, and stacked fractions must stay readable */
+
+
+/* Reading refresh: quiet hierarchy, focused contents, clearly separated working. */
+.lesson span[id][tabindex="-1"] { display: block; scroll-margin-top: 70px; } /* help links must not land under the top bar */
+body.chapter .lesson { margin-inline: auto; width: 100%; }
+.lesson .unit + .unit { margin-top: 48px; }
+.lesson h2 { margin-bottom: 20px; }
+.lesson h3 { margin-top: 36px; margin-bottom: 16px; }
+.lesson p { margin-bottom: 18px; }
+.lesson .sec { margin-top: 44px; padding-top: 8px; }
+.steps.reveal { padding: 22px 24px; border-color: #d9dee3; border-top: 3px solid var(--accent); margin: 28px 0; }
+.steps.reveal > .ct { padding-bottom: 14px; border-bottom: 1px solid var(--line); line-height: 1.65; }
+.steps.reveal ol { padding-left: 1.65em; }
+.steps.reveal .step { padding: 16px 4px; margin: 0; }
+.steps.reveal .step + .step { border-top: 1px solid var(--line); }
+.steps.reveal .step::marker { color: var(--accent); font-weight: 700; }
+.steps.reveal .step > :last-child { margin-bottom: 0; }
+.steps.reveal math[display="block"] { text-align: left; margin: 14px 0; }
+.widget.practice { padding: 20px 24px; margin: 28px 0; background: #f4f8fc; }
+.phead { gap: 8px 12px; margin-bottom: 14px; }
+.plabel { flex-basis: 100%; }
+.pq { padding-bottom: 18px; }
+.ufoot { margin-top: 28px; padding-top: 18px; }
+.qq { padding: 20px; margin: 20px 0; }
+.qe { padding: 16px; margin-top: 18px; background: var(--surface-2); border: 0; border-radius: 6px; }
+.qe .btn { margin-top: 8px; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, summary:focus-visible {
+  outline: 3px solid var(--accent); outline-offset: 4px;
+}
+@media (min-width: 1000px) {
+  body.chapter main { max-width: 1240px; padding-inline: 28px; }
+  .chap { grid-template-columns: 252px minmax(0, 880px); gap: 48px; }
+  .lesson { max-width: 880px; }
+  .side { padding-right: 16px; border-right: 1px solid var(--line); scrollbar-width: thin; }
+  .toc > ol > li { margin-bottom: 8px; }
+  .toc a { padding: 9px 10px; border-radius: 0 5px 5px 0; }
+  .toc .sub a { padding: 8px 10px 8px 28px; line-height: 1.65; }
+  .focused-toc > ol > li:not(.active-section):not(:focus-within) > .sub { display: none; }
+  .toc a[aria-current] { background: var(--accent-soft); }
+  .toc > ol > li > a[aria-current] { background: transparent; }
+}
+@media (min-width: 1500px) {
+  body.chapter main { max-width: 1360px; }
+  .chap { grid-template-columns: 280px minmax(0, 960px); gap: 64px; }
+  .lesson { max-width: 960px; }
+}
+@media (max-width: 639px) {
+  .steps.reveal, .widget.practice, .qq { padding: 16px; }
+  .lesson .unit + .unit { margin-top: 36px; }
+  .steps.reveal .step { padding-inline: 0; }
+  .qn .btn { justify-content: center; min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }

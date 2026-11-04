@@ -9,6 +9,9 @@
     var marks = [].slice.call(toc.querySelectorAll("a")).map(function (a) {
       return { a: a, el: document.getElementById(a.getAttribute("href").slice(1)) };
     }).filter(function (m) { return m.el; });
+    var contentsNav = toc;
+    contentsNav.classList.add("focused-toc");
+    var groups = [].slice.call(contentsNav.querySelectorAll(":scope > ol > li"));
     var cur = null, queued = false;
     var spy = function () {
       queued = false;
@@ -22,8 +25,17 @@
       marks.forEach(function (m) { m.a.removeAttribute("aria-current"); });
       if (sec) sec.a.setAttribute("aria-current", "true");
       if (sub) sub.a.setAttribute("aria-current", "true");
+      groups.forEach(function (group) {
+        group.classList.toggle("active-section", !!sec && group.contains(sec.a));
+      });
       cur = now;
-      if (now) now.scrollIntoView({ block: "nearest" }); // keeps it visible in the side panel (hidden on phones)
+      // Scroll only the sidebar: scrollIntoView also moves the lesson viewport.
+      var panel = contentsNav.closest(".side");
+      if (now && panel && panel.offsetParent) {
+        var itemRect = now.getBoundingClientRect(), panelRect = panel.getBoundingClientRect();
+        if (itemRect.bottom > panelRect.bottom - 20) panel.scrollTop += itemRect.bottom - panelRect.bottom + 20;
+        else if (itemRect.top < panelRect.top + 20) panel.scrollTop -= panelRect.top + 20 - itemRect.top;
+      }
     };
     window.addEventListener("scroll", function () { if (!queued) { queued = true; requestAnimationFrame(spy); } }, { passive: true });
     spy();
@@ -267,7 +279,8 @@
     function mark(el, q, ok, shown) {
       el.classList.add(ok ? "ok" : "no");
       var e = el.querySelector(".qe");
-      e.innerHTML = "<p><b>" + (ok ? "✓ சரி!" : "✗ தவறு.") + "</b>" + (ok || !shown ? "" : " சரியான விடை: <b>" + shown + "</b>") + "</p>" + (q.e || "");
+      e.innerHTML = "<p><b>" + (ok ? "✓ சரி!" : "✗ தவறு.") + "</b>" + (ok || !shown ? "" : " சரியான விடை: <b>" + shown + "</b>") + "</p>" + (q.e || "") +
+        (!ok && q.r ? '<p><a class="btn" href="' + esc(q.r) + '">எளிய உதாரணத்துடன் மீண்டும் முயலுங்கள்</a></p>' : "");
       e.hidden = false;
       answered++;
       if (ok) right++;

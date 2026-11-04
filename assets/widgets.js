@@ -742,6 +742,9 @@
         '<div class="qe" hidden></div></div>';
     });
     box.insertAdjacentHTML("beforeend", html);
+    function review(q, ok) {
+      return !ok && q.r ? '<p><a class="btn" href="' + esc(q.r) + '">எளிய உதாரணத்துடன் மீண்டும் முயலுங்கள்</a></p>' : "";
+    }
     function checkNum(el) { // stays open until right, so the student can try again; "விடை" comes from the explanation
       var q = c.qs[el.dataset.i], inp = el.querySelector("input"), x = answer(inp.value), ex = el.querySelector(".qe");
       ex.hidden = false;
@@ -751,14 +754,14 @@
       el.classList.toggle("ok", ok);
       if (ok) inp.disabled = el.querySelector("[data-num]").disabled = true;
       ex.innerHTML = ok ? "<p><b>✓ சரி!</b></p>" + (q.e || "")
-        : '<p><b>✗ இன்னும் சரியில்லை.</b> மீண்டும் முயலுங்கள், அல்லது <button type="button" class="btn" data-why>விளக்கத்தைக் காட்டு</button></p>';
+        : '<p><b>✗ இன்னும் சரியில்லை.</b> மீண்டும் முயலுங்கள், அல்லது <button type="button" class="btn" data-why>விளக்கத்தைக் காட்டு</button></p>' + review(q, false);
     }
     box.addEventListener("keydown", function (e) {
       if (e.key === "Enter" && e.target.matches(".qn input")) checkNum(e.target.closest(".pq"));
     });
     box.addEventListener("click", function (e) {
       if (e.target.closest("[data-num]")) return checkNum(e.target.closest(".pq"));
-      if (e.target.closest("[data-why]")) { var pq = e.target.closest(".pq"); pq.querySelector(".qe").innerHTML = c.qs[pq.dataset.i].e || ""; return; }
+      if (e.target.closest("[data-why]")) { var pq = e.target.closest(".pq"); var q = c.qs[pq.dataset.i]; pq.querySelector(".qe").innerHTML = (q.e || "") + review(q, false); return; }
       var b = e.target.closest(".qo");
       if (!b) return;
       var el = b.closest(".pq"), q = c.qs[el.dataset.i], o = +b.dataset.o, ok = o === q.a;
@@ -769,7 +772,7 @@
       if (!ok) b.classList.add("wrong");
       var ex = el.querySelector(".qe");
       ex.hidden = false;
-      ex.innerHTML = "<p><b>" + (ok ? "✓ சரி!" : "✗ தவறு.") + "</b></p>" + (q.e || "");
+      ex.innerHTML = "<p><b>" + (ok ? "✓ சரி!" : "✗ தவறு.") + "</b></p>" + (q.e || "") + review(q, ok);
       el.classList.add(ok ? "ok" : "no");
     });
   }
