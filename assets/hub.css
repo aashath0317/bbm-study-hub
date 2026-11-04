@@ -387,3 +387,6 @@ msup > :last-child, munder > :last-child { font-size: 85%; } /* smaller than the
   body.subject main { max-width: 1400px; }
 }
 @media (min-width: 1000px) { #dash:not([hidden]) { grid-template-rows: auto 1fr; } }
+
+/* Nested fractions: browsers shrink each level; stop after the first so the innermost x stays readable. */
+mfrac mfrac > * { math-style: normal; }
