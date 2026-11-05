@@ -495,3 +495,21 @@ html[data-theme="dark"] .fcard[aria-pressed="true"] { background: var(--accent-s
 }
 /* Keep oversized inline fractions locally scrollable when text is enlarged. */
 .lesson p:has(math), .lesson .ct:has(math), .lesson .qt:has(math), .lesson .wq:has(math), .lesson .qo:has(math) { overflow-x: auto; }
+
+/* Subject chapters contain their existing lessons; native details works offline. */
+.chapter-group { margin: 0 0 16px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.chapter-group > summary { cursor: pointer; padding: 18px 20px; line-height: 1.5; }
+.chapter-group > summary::marker { color: var(--accent); }
+.chapter-group > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.chapter-group .chapter-label { color: var(--accent); font-weight: 700; margin-right: 14px; }
+.chapter-group .chapter-count { display: block; margin-top: 6px; color: var(--muted); font-size: .85rem; }
+.chapter-group[open] > summary { border-bottom: 1px solid var(--line); }
+.chapter-group > .chlist { padding: 16px; }
+@media (max-width: 600px) {
+  .chapter-group > summary { padding: 14px; }
+  .chapter-group .chapter-label { display: block; margin: 0 0 4px; }
+  .chapter-group > .chlist { padding: 10px; }
+}
+@media print {
+  .chapter-group > .chlist { display: block !important; }
+}
