@@ -251,8 +251,8 @@
     function header() {
       var st = BBM.load().quiz[key];
       head.innerHTML = st
-        ? '<div class="qstat"><span>சிறந்தது (Best) <b>' + st.best + "%</b></span><span>கடைசி (Last) <b>" + st.last +
-          "%</b></span><span>முயற்சிகள் (Attempts) <b>" + st.tries + "</b></span></div>"
+        ? '<div class="qstat"><span>சிறந்தது <b>' + st.best + "%</b></span><span>கடைசி <b>" + st.last +
+          "%</b></span><span>முயற்சிகள் <b>" + st.tries + "</b></span></div>"
         : '<p class="qnote">' + all.length + " கேள்விகள். ஒரு விடையைத் தெரிவு செய்தவுடன் சரியா தவறா என்பதும் விளக்கமும் தோன்றும்.</p>";
     }
     function start(mix) {
@@ -266,7 +266,7 @@
           }).join("") + "</div>";
         } else {
           h += '<div class="qn"><input type="text" inputmode="decimal" autocomplete="off" placeholder="விடையை எண்ணாக எழுதுங்கள்" aria-label="விடை">' +
-            '<button type="button" class="btn" data-check>சரிபார் (Check)</button></div>';
+            '<button type="button" class="btn" data-check>சரிபார்</button></div>';
         }
         return h + '<div class="qe" hidden></div></div>';
       }).join("") + '<p class="qleft"></p><div class="qres" hidden></div>';
@@ -332,7 +332,7 @@
       var res = body.querySelector(".qres");
       res.className = "qres " + g[1];
       res.innerHTML = '<div class="big">' + right + " / " + cur.length + " <small>(" + p + "%)</small></div><p>" + g[0] + "</p>" +
-        (weak.length ? "<p><b>மீண்டும் பார்க்க வேண்டியவை (Weak topics):</b> " + weak.map(esc).join(", ") + "</p>" : "") +
+        (weak.length ? "<p><b>மீண்டும் பார்க்க வேண்டியவை:</b> " + weak.map(esc).join(", ") + "</p>" : "") +
         '<div class="qact"><button type="button" class="btn" data-again>↻ மீண்டும் முயற்சி (புதிய வரிசை)</button>' +
         (p >= 70 && !s.done[key] && key === chapterKey ? '<button type="button" class="btn on" data-done>✓ இந்தப் பாடத்தை முடித்ததாகக் குறி</button>' : "") +
         "</div>";

@@ -165,8 +165,8 @@
     var opts = '<option value="">— தெரிவு —</option>' +
       accs.map(function (a, i) { return '<option value="' + i + '">' + esc(a) + "</option>"; }).join("");
     function answerTable(it) {
-      var rows = Object.keys(it.dr).map(function (a) { return "<tr><td>" + esc(a) + ' (Dr)</td><td class="num">' + fmt(it.dr[a]) + "</td><td></td></tr>"; })
-        .concat(Object.keys(it.cr).map(function (a) { return '<tr><td class="to">' + esc(a) + ' (Cr)</td><td></td><td class="num">' + fmt(it.cr[a]) + "</td></tr>"; }));
+      var rows = Object.keys(it.dr).map(function (a) { return "<tr><td>" + esc(a) + ' — பற்று</td><td class="num">' + fmt(it.dr[a]) + "</td><td></td></tr>"; })
+        .concat(Object.keys(it.cr).map(function (a) { return '<tr><td class="to">' + esc(a) + ' — வரவு</td><td></td><td class="num">' + fmt(it.cr[a]) + "</td></tr>"; }));
       return '<div class="tbl"><table><thead><tr><th>கணக்கு</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" + rows.join("") + "</tbody></table></div>";
     }
     var box = document.createElement("div");
@@ -177,8 +177,8 @@
           "</td><td>" + numInput('class="cr" aria-label="' + CR + '"') + "</td></tr>";
       }
       return '<div class="wcard" data-k="' + k + '"><div class="wq"><b>' + (k + 1) + ".</b> " + it.t + "</div>" +
-        '<div class="tbl"><table class="wjt"><thead><tr><th>கணக்கு (Account)</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" + rows +
-        '</tbody></table></div><div class="wbar"><button type="button" class="btn on" data-check>சரிபார் (Check)</button>' +
+        '<div class="tbl"><table class="wjt"><thead><tr><th>கணக்கு</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" + rows +
+        '</tbody></table></div><div class="wbar"><button type="button" class="btn on" data-check>சரிபார்</button>' +
         '<button type="button" class="btn" data-show>விடையைக் காட்டு</button></div><div class="wres" hidden></div></div>';
     }).join("") + '<p class="wscore note"></p>';
     W.appendChild(box);
@@ -226,7 +226,7 @@
       var it = items[+card.dataset.k], res = card.querySelector(".wres");
       if (e.target.closest("[data-check]")) check(card, it);
       else if (e.target.closest("[data-show]")) {
-        res.innerHTML = "<p><b>சரியான பதிவு (Correct entry):</b></p>" + answerTable(it) + (it.e ? "<p>" + it.e + "</p>" : "");
+        res.innerHTML = "<p><b>சரியான பதிவு:</b></p>" + answerTable(it) + (it.e ? "<p>" + it.e + "</p>" : "");
         res.hidden = false;
       }
     });
@@ -240,7 +240,7 @@
     var bd = null;
     if (bal && !same(td, tc)) {
       var small = td < tc ? dr : cr;
-      small.push({ t: "மீதி c/d (Balance c/d)", amt: Math.abs(td - tc), cls: "bal" });
+      small.push({ t: "கீழே கொண்டுசெல்லும் மீதி", amt: Math.abs(td - tc), cls: "bal" });
       bd = { side: td > tc ? "dr" : "cr", amt: Math.abs(td - tc) };
     }
     var n = Math.max(dr.length, cr.length, 1), tot = bal ? Math.max(td, tc) : null;
@@ -251,15 +251,15 @@
         h += r ? '<li class="' + (r.cls || "") + '"><span>' + r.t + "</span><b>" + fmt(r.amt) + "</b></li>" : '<li class="pad"><span>&nbsp;</span></li>';
       }
       h += '<li class="tot"><span>' + (bal ? "மொத்தம்" : "கூட்டுத்தொகை") + "</span><b>" + fmt(bal ? tot : side === "dr" ? td : tc) + "</b></li>";
-      if (bd) h += bd.side === side ? '<li class="bal"><span>மீதி b/d (Balance b/d)</span><b>' + fmt(bd.amt) + "</b></li>" : '<li class="pad"><span>&nbsp;</span></li>';
+      if (bd) h += bd.side === side ? '<li class="bal"><span>மேலே கொண்டுவரும் மீதி</span><b>' + fmt(bd.amt) + "</b></li>" : '<li class="pad"><span>&nbsp;</span></li>';
       return "<ul>" + h + "</ul>";
     }
     return '<div class="tacc"><div class="tname">' + esc(name) + '</div><div class="tcols"><div><div class="th">' + DR + "</div>" + col(dr, "dr") +
       '</div><div><div class="th">' + CR + "</div>" + col(cr, "cr") + "</div></div></div>" +
-      (bd ? '<p class="note">' + (bd.side === "dr" ? "பற்று மீதி (Debit balance)" : "வரவு மீதி (Credit balance)") + ": " + fmt(bd.amt) + "</p>" : "");
+      (bd ? '<p class="note">' + (bd.side === "dr" ? "பற்று மீதி" : "வரவு மீதி") + ": " + fmt(bd.amt) + "</p>" : "");
   }
   function tAccount(W, c) {
-    var name = c.account || "கணக்கு (Account)", items = c.items || [], box = document.createElement("div");
+    var name = c.account || "கணக்கு", items = c.items || [], box = document.createElement("div");
     W.appendChild(box);
     if (!items.length) return tFree(box, name);
     var placed = [], mistakes = 0, balanced = false, msg = "";
@@ -270,22 +270,22 @@
       var left = items.map(function (it, k) { return placed.indexOf(k) < 0 ? k : -1; }).filter(function (k) { return k >= 0; });
       var h = tDraw(name, rows("dr"), rows("cr"), balanced);
       if (left.length) {
-        h += '<p class="note">ஒவ்வொரு பதிவும் இந்தக் கணக்கின் எந்தப் பக்கம் வரும்? (Which side?)</p><div class="tpend">' + left.map(function (k) {
+        h += '<p class="note">ஒவ்வொரு பதிவும் இந்தக் கணக்கின் எந்தப் பக்கம் வரும்?</p><div class="tpend">' + left.map(function (k) {
           return '<div class="wcard" data-k="' + k + '"><span>' + items[k].t + " · <b>" + fmt(items[k].amt) + "</b></span>" +
-            '<span class="wtog"><button type="button" class="btn" data-s="dr">◂ Dr</button><button type="button" class="btn" data-s="cr">Cr ▸</button></span></div>';
+            '<span class="wtog"><button type="button" class="btn" data-s="dr">◂ பற்று</button><button type="button" class="btn" data-s="cr">வரவு ▸</button></span></div>';
         }).join("") + "</div>";
       } else if (!balanced) {
         var add = function (a, r) { return a + r.amt; }, td = rows("dr").reduce(add, 0), tc = rows("cr").reduce(add, 0);
         h += same(td, tc)
           ? '<div class="wres ok"><p><b>✓ எல்லாம் சரி.</b> இரு பக்கமும் சமம் (' + fmt(td) + "): மீதி இல்லை.</p></div>"
-          : '<div class="wcard tbalq"><p><b>இப்போது கணக்கை மீதிப்படுத்துங்கள் (Balance the account).</b></p>' +
-            '<p>மீதி c/d (Balance c/d) தொகை: ' + numInput('class="bamt" aria-label="Balance c/d"') + "</p>" +
-            '<p>அது எந்தப் பக்கம் எழுதப்படும்? <span class="wtog"><button type="button" class="btn" data-b="dr">Dr</button><button type="button" class="btn" data-b="cr">Cr</button></span></p></div>';
+          : '<div class="wcard tbalq"><p><b>இப்போது கணக்கை மீதிப்படுத்துங்கள்.</b></p>' +
+            '<p>கீழே கொண்டுசெல்லும் மீதி தொகை: ' + numInput('class="bamt" aria-label="கீழே கொண்டுசெல்லும் மீதி"') + "</p>" +
+            '<p>அது எந்தப் பக்கம் எழுதப்படும்? <span class="wtog"><button type="button" class="btn" data-b="dr">பற்று</button><button type="button" class="btn" data-b="cr">வரவு</button></span></p></div>';
       } else {
-        h += '<div class="wres ok"><p><b>✓ முடிந்தது!</b> தவறுகள்: ' + mistakes + ". சிறிய பக்கத்தில் மீதி c/d, அடுத்த காலத்தில் எதிர்ப் பக்கத்தில் மீதி b/d.</p></div>";
+        h += '<div class="wres ok"><p><b>✓ முடிந்தது!</b> தவறுகள்: ' + mistakes + ". சிறிய பக்கத்தில் கீழே கொண்டுசெல்லும் மீதி, அடுத்த காலத்தில் எதிர்ப் பக்கத்தில் மேலே கொண்டுவரும் மீதி.</p></div>";
       }
       if (msg) h += msg;
-      h += '<div class="wbar"><button type="button" class="btn" data-reset>↺ மீண்டும் (Reset)</button></div>';
+      h += '<div class="wbar"><button type="button" class="btn" data-reset>↺ மீண்டும்</button></div>';
       box.innerHTML = h;
       msg = "";
     }
@@ -304,7 +304,7 @@
         placed.forEach(function (k) { if (items[k].side === "dr") td += items[k].amt; else tc += items[k].amt; });
         var want = td < tc ? "dr" : "cr", amt = num(box.querySelector(".bamt").value), m = [];
         if (!same(amt, Math.abs(td - tc))) m.push("தொகை: பெரிய பக்கக் கூட்டுத்தொகை − சிறிய பக்கக் கூட்டுத்தொகை = " + fmt(Math.max(td, tc)) + " − " + fmt(Math.min(td, tc)) + ".");
-        if (b.dataset.b !== want) m.push("பக்கம்: மீதி c/d கூட்டுத்தொகை <b>குறைவான</b> பக்கத்தில் எழுதப்படும், இரு பக்கமும் சமமாக.");
+        if (b.dataset.b !== want) m.push("பக்கம்: கீழே கொண்டுசெல்லும் மீதி கூட்டுத்தொகை <b>குறைவான</b> பக்கத்தில் எழுதப்படும், இரு பக்கமும் சமமாக.");
         if (m.length) {
           mistakes++;
           var keep = box.querySelector(".bamt").value;
@@ -351,19 +351,19 @@
         var s = side[k], cls = checked && s ? (s === it.side ? "ok" : "no") : "";
         if (s === "dr") td += it.amt; else if (s === "cr") tc += it.amt; else all = false;
         return '<tr class="' + cls + '" data-k="' + k + '"><td>' + esc(it.a) + '<span class="wtog"><button type="button" class="btn' + (s === "dr" ? " on" : "") +
-          '" data-s="dr">Dr</button><button type="button" class="btn' + (s === "cr" ? " on" : "") + '" data-s="cr">Cr</button></span>' +
+          '" data-s="dr">பற்று</button><button type="button" class="btn' + (s === "cr" ? " on" : "") + '" data-s="cr">வரவு</button></span>' +
           (cls === "no" && it.e ? '<small class="why">' + it.e + "</small>" : "") + '</td><td class="num">' + (s === "dr" ? fmt(it.amt) : "") +
           '</td><td class="num">' + (s === "cr" ? fmt(it.amt) : "") + "</td></tr>";
       }).join("");
       var wrong = items.filter(function (it, k) { return side[k] && side[k] !== it.side; }).length, h;
       if (!all) h = '<p class="note">ஒவ்வொரு மீதியும் பற்றா வரவா என்று தெரிவு செய்யுங்கள். மொத்தங்கள் உடனே மாறும்.</p>';
       else if (!checked) h = '<p class="note">' + (same(td, tc) ? "மொத்தங்கள் சமம். இப்போது சரிபாருங்கள்." : "மொத்தங்கள் சமமில்லை: வேறுபாடு " + fmt(Math.abs(td - tc)) + ". எங்கோ பிழை உள்ளது.") + "</p>";
-      else if (!wrong) h = '<div class="wres ok"><p><b>✓ எல்லாம் சரி!</b> ' + (same(td, tc) ? "பரீட்சை மீதி சமன் (Trial balance agrees)." : "இந்தக் கணக்குகளின் மீதிகள் சமமாகவில்லை: பதிவுகளில் பிழை உள்ளது என்பதே இதன் பொருள்.") + "</p></div>";
+      else if (!wrong) h = '<div class="wres ok"><p><b>✓ எல்லாம் சரி!</b> ' + (same(td, tc) ? "பரீட்சை மீதி சமன்." : "இந்தக் கணக்குகளின் மீதிகள் சமமாகவில்லை: பதிவுகளில் பிழை உள்ளது என்பதே இதன் பொருள்.") + "</p></div>";
       else h = '<div class="wres no"><p><b>✗ ' + wrong + " தவறு.</b> சிவப்பு வரிகளைத் திருத்துங்கள்." +
         (same(td, tc) ? " மொத்தங்கள் சமமாக இருந்தாலும் பிழைகள் இருக்கலாம்!" : "") + "</p></div>";
-      box.innerHTML = '<div class="tbl"><table class="wtb"><thead><tr><th>கணக்கு (Account)</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" + rows +
-        '</tbody><tfoot><tr><th>மொத்தம் (Total)</th><th class="num">' + fmt(td) + '</th><th class="num">' + fmt(tc) + "</th></tr></tfoot></table></div>" + h +
-        '<div class="wbar"><button type="button" class="btn on" data-check' + (all ? "" : " disabled") + '>சரிபார் (Check)</button><button type="button" class="btn" data-reset>↺ மீண்டும்</button></div>';
+      box.innerHTML = '<div class="tbl"><table class="wtb"><thead><tr><th>கணக்கு</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" + rows +
+        '</tbody><tfoot><tr><th>மொத்தம்</th><th class="num">' + fmt(td) + '</th><th class="num">' + fmt(tc) + "</th></tr></tfoot></table></div>" + h +
+        '<div class="wbar"><button type="button" class="btn on" data-check' + (all ? "" : " disabled") + '>சரிபார்</button><button type="button" class="btn" data-reset>↺ மீண்டும்</button></div>';
     }
     box.addEventListener("click", function (e) {
       var b = e.target.closest("button");
@@ -379,8 +379,8 @@
     function row() {
       return '<tr><td><input type="text" aria-label="கணக்கு" placeholder="கணக்கு"></td><td>' + numInput('class="dr" aria-label="Dr"') + "</td><td>" + numInput('class="cr" aria-label="Cr"') + "</td></tr>";
     }
-    box.innerHTML = '<div class="tbl"><table class="wtb"><thead><tr><th>கணக்கு (Account)</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" +
-      row() + row() + row() + row() + '</tbody><tfoot><tr><th>மொத்தம் (Total)</th><th class="num td"></th><th class="num tc"></th></tr></tfoot></table></div>' +
+    box.innerHTML = '<div class="tbl"><table class="wtb"><thead><tr><th>கணக்கு</th><th>' + DR + "</th><th>" + CR + "</th></tr></thead><tbody>" +
+      row() + row() + row() + row() + '</tbody><tfoot><tr><th>மொத்தம்</th><th class="num td"></th><th class="num tc"></th></tr></tfoot></table></div>' +
       '<p class="tbmsg note"></p><div class="wbar"><button type="button" class="btn" data-add>+ வரி சேர் (Add row)</button></div>';
     function draw() {
       var td = 0, tc = 0;
@@ -390,7 +390,7 @@
       box.querySelector(".tc").textContent = fmt(tc);
       var m = box.querySelector(".tbmsg");
       m.textContent = !td && !tc ? "மீதிகளை எழுதுங்கள்; மொத்தங்கள் உடனே கணக்கிடப்படும்."
-        : same(td, tc) ? "✓ பரீட்சை மீதி சமன் (Trial balance agrees)." : "வேறுபாடு (Difference): " + fmt(Math.abs(td - tc)) + " · " + (td > tc ? "பற்று அதிகம்" : "வரவு அதிகம்");
+        : same(td, tc) ? "✓ பரீட்சை மீதி சமன்." : "வேறுபாடு (Difference): " + fmt(Math.abs(td - tc)) + " · " + (td > tc ? "பற்று அதிகம்" : "வரவு அதிகம்");
       m.className = "tbmsg note" + (td || tc ? same(td, tc) ? " good" : " warn" : "");
     }
     box.addEventListener("input", draw);
